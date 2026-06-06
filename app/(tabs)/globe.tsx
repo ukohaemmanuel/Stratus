@@ -4,6 +4,8 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/ui/AppIcon';
+import { getWeatherCodeMapping } from '@/features/weather/weatherInterpreter';
+import { useWeatherStore } from '@/features/weather/weatherStore';
 import { alpha } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
 
@@ -13,6 +15,18 @@ export default function GlobeScreen() {
   const theme = useAppTheme();
   const r = sleekTokens.radii;
   const t = theme.colors;
+
+  const payload = useWeatherStore(s => s.currentPayload);
+  const fetchWeatherForCurrentLocation = useWeatherStore(s => s.fetchWeatherForCurrentLocation);
+  const setSelectedDay = useWeatherStore(s => s.setSelectedDay);
+
+  const city    = payload?.city.name ?? 'Newcastle';
+  const temp    = payload?.current.temperature ?? 12;
+  const rain    = payload?.current.rainProbability ?? 40;
+  const wind    = payload?.current.windSpeed ?? 12;
+  const code    = payload?.current.weatherCode ?? 3;
+  const mapping = getWeatherCodeMapping(code);
+  const mood    = payload ? mapping.weatherMood : 'Soft cloudy morning';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
@@ -53,6 +67,7 @@ export default function GlobeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.75}
+              onPress={() => fetchWeatherForCurrentLocation()}
               style={{
                 alignItems: 'center',
                 backgroundColor: t.card,
@@ -117,13 +132,13 @@ export default function GlobeScreen() {
             >
               <View>
                 <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-                  Newcastle
+                  {city}
                 </Text>
                 <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 10 }}>
-                  12° · Cloudy
+                  {temp}° · {mapping.conditionLabel}
                 </Text>
               </View>
-              <AppIcon name="solar-clouds-bold" size={20} color={t.primary} />
+              <AppIcon name={mapping.iconKey} size={20} color={t.primary} />
             </View>
           </View>
 
@@ -180,6 +195,7 @@ export default function GlobeScreen() {
           </Text>
         </View>
 
+        {/* Selected location card */}
         <View style={{ paddingBottom: 24, paddingHorizontal: 24 }}>
           <View
             style={{
@@ -198,38 +214,40 @@ export default function GlobeScreen() {
           >
             <View style={{ flex: 1 }}>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 20, lineHeight: 24 }}>
-                Newcastle
+                {city}
               </Text>
               <Text style={{ color: t.primary, fontFamily: 'Quicksand_700Bold', fontSize: 12, marginTop: 2 }}>
-                Soft cloudy morning
+                {mood}
               </Text>
               <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
                 <View>
                   <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' }}>
                     Rain
                   </Text>
-                  <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>40%</Text>
+                  <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>
+                    {rain}%
+                  </Text>
                 </View>
                 <View>
                   <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' }}>
                     Wind
                   </Text>
-                  <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>12 mph</Text>
+                  <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>
+                    {wind} mph
+                  </Text>
                 </View>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 12 }}>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 36 }}>
-                12°
+                {temp}°
               </Text>
               <TouchableOpacity
                 activeOpacity={0.75}
-                onPress={() =>
-                  router.push({
-                    pathname: '/weather-detail',
-                    params: { city: 'Newcastle', day: 'Today' },
-                  })
-                }
+                onPress={() => {
+                  setSelectedDay(null);
+                  router.push('/weather-detail');
+                }}
                 style={{
                   backgroundColor: t.primary,
                   borderRadius: r.full,

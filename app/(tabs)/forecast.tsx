@@ -4,6 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { sevenDayForecast, sixteenDayOutlook } from '@/data/mockWeather';
+import {
+  buildForecastDays,
+  buildOutlookDays,
+} from '@/features/weather/weatherInterpreter';
+import { useWeatherStore } from '@/features/weather/weatherStore';
 import { alpha, themeColor } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
 
@@ -12,11 +17,17 @@ export default function ForecastScreen() {
   const r = sleekTokens.radii;
   const t = theme.colors;
   const labelColors = {
-    primary: { bg: alpha(t.primary, 0.10), text: t.primary },
-    accent: { bg: alpha(t.accent, 0.10), text: t.accent },
+    primary:   { bg: alpha(t.primary, 0.10), text: t.primary },
+    accent:    { bg: alpha(t.accent, 0.10), text: t.accent },
     secondary: { bg: alpha(t.secondary, 0.20), text: t.secondaryForeground },
-    muted: { bg: t.muted, text: t.mutedText },
+    muted:     { bg: t.muted, text: t.mutedText },
   };
+
+  const payload      = useWeatherStore(s => s.currentPayload);
+  const setSelectedDay = useWeatherStore(s => s.setSelectedDay);
+
+  const forecast = payload ? buildForecastDays(payload.daily) : sevenDayForecast;
+  const outlook  = payload ? buildOutlookDays(payload.outlook) : sixteenDayOutlook;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
@@ -31,19 +42,17 @@ export default function ForecastScreen() {
         </View>
 
         <View style={{ gap: 16, paddingHorizontal: 24 }}>
-          {sevenDayForecast.map((day) => {
+          {forecast.map((day, index) => {
             const label = labelColors[day.labelColor];
 
             return (
               <TouchableOpacity
                 key={day.id}
                 activeOpacity={0.82}
-                onPress={() =>
-                  router.push({
-                    pathname: '/weather-detail',
-                    params: { city: 'Newcastle', day: day.dayName },
-                  })
-                }
+                onPress={() => {
+                  setSelectedDay(index);
+                  router.push('/weather-detail');
+                }}
               >
                 <View
                   style={{
@@ -124,7 +133,7 @@ export default function ForecastScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 12, paddingHorizontal: 24 }}
           >
-            {sixteenDayOutlook.map((day) => (
+            {outlook.map((day) => (
               <View
                 key={day.id}
                 style={{

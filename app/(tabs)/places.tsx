@@ -4,6 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { mockPlaces } from '@/data/mockPlaces';
+import { getWeatherCodeMapping } from '@/features/weather/weatherInterpreter';
+import { useWeatherStore } from '@/features/weather/weatherStore';
+import type { CityResult } from '@/services/weather/weatherTypes';
 import { alpha, themeColor } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
 
@@ -11,8 +14,38 @@ export default function PlacesScreen() {
   const theme = useAppTheme();
   const r = sleekTokens.radii;
   const t = theme.colors;
-  const current = mockPlaces.find((p) => p.isCurrent) ?? mockPlaces[0];
+
+  const payload            = useWeatherStore(s => s.currentPayload);
+  const fetchWeatherForCity = useWeatherStore(s => s.fetchWeatherForCity);
+  const setSelectedDay     = useWeatherStore(s => s.setSelectedDay);
+
   const savedPlaces = mockPlaces.filter((p) => !p.isCurrent);
+
+  // Current location card: use live payload if available, fallback to mock
+  const mockCurrent = mockPlaces.find((p) => p.isCurrent) ?? mockPlaces[0];
+  const currentName   = payload?.city.name ?? mockCurrent.city;
+  const currentTemp   = payload?.current.temperature ?? mockCurrent.temperature;
+  const currentRain   = payload?.current.rainProbability ?? mockCurrent.rainChance;
+  const currentCode   = payload?.current.weatherCode ?? 3;
+  const currentMapping = getWeatherCodeMapping(currentCode);
+  const currentMood   = payload
+    ? currentMapping.weatherMood
+    : mockCurrent.weatherMood;
+
+  const handleSavedPlaceTap = async (place: typeof mockPlaces[0]) => {
+    const city: CityResult = {
+      id: place.id,
+      name: place.city,
+      country: place.region,
+      region: place.region,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      timezone: 'auto',
+    };
+    setSelectedDay(null);
+    await fetchWeatherForCity(city);
+    router.push('/weather-detail');
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
@@ -53,6 +86,7 @@ export default function PlacesScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 24 }}>
+          {/* Current location card */}
           <View
             style={{
               alignItems: 'center',
@@ -79,16 +113,16 @@ export default function PlacesScreen() {
                 Current Location
               </Text>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 20, marginTop: 2 }}>
-                {current.city}
+                {currentName}
               </Text>
               <Text style={{ color: alpha(t.primary, 0.80), fontFamily: 'Quicksand_700Bold', fontSize: 12, marginTop: 4 }}>
-                {current.weatherMood}
+                {currentMood}
               </Text>
             </View>
             <View style={{ alignItems: 'center', flexDirection: 'row', gap: 16 }}>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 30 }}>
-                  {current.temperature}°
+                  {currentTemp}°
                 </Text>
                 <Text
                   style={{
@@ -98,24 +132,24 @@ export default function PlacesScreen() {
                     textTransform: 'uppercase',
                   }}
                 >
-                  {current.rainChance}% Rain
+                  {currentRain}% Rain
                 </Text>
               </View>
-              <AppIcon name={current.icon} size={40} color={themeColor(theme, current.iconColor)} />
+              <AppIcon
+                name={payload ? currentMapping.iconKey : mockCurrent.icon}
+                size={40}
+                color={payload ? themeColor(theme, currentMapping.iconColor) : themeColor(theme, mockCurrent.iconColor)}
+              />
             </View>
           </View>
 
+          {/* Saved places */}
           <View style={{ gap: 16, paddingTop: 8 }}>
             {savedPlaces.map((place) => (
               <TouchableOpacity
                 key={place.id}
                 activeOpacity={0.82}
-                onPress={() =>
-                  router.push({
-                    pathname: '/weather-detail',
-                    params: { city: place.city, day: 'Today' },
-                  })
-                }
+                onPress={() => handleSavedPlaceTap(place)}
               >
                 <View
                   style={{

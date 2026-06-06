@@ -1,10 +1,16 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { currentWeather, hourlyForecast } from '@/data/mockWeather';
+import {
+  buildCurrentWeatherDisplay,
+  buildHourlyForecast,
+} from '@/features/weather/weatherInterpreter';
+import { useWeatherStore } from '@/features/weather/weatherStore';
 import { alpha, themeColor } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
 
@@ -16,9 +22,31 @@ export default function TodayScreen() {
   const r = sleekTokens.radii;
   const t = theme.colors;
 
+  const payload   = useWeatherStore(s => s.currentPayload);
+  const isLoading = useWeatherStore(s => s.isLoadingCurrent);
+  const error     = useWeatherStore(s => s.error);
+  const fetchWeatherForCurrentLocation = useWeatherStore(s => s.fetchWeatherForCurrentLocation);
+  const clearError = useWeatherStore(s => s.clearError);
+
+  // Derived display data — falls back to mock if no payload yet
+  const weather = payload ? buildCurrentWeatherDisplay(payload) : currentWeather;
+  const hourly  = payload ? buildHourlyForecast(payload.hourly) : hourlyForecast;
+
+  // Fetch on first mount; guard prevents React 19 Strict Mode double-fire
+  const hasFetched = useRef(false);
+  useEffect(() => {
+    if (!payload && !hasFetched.current) {
+      hasFetched.current = true;
+      fetchWeatherForCurrentLocation();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 128 }}>
+
+        {/* Header */}
         <View
           style={{
             alignItems: 'center',
@@ -31,7 +59,7 @@ export default function TodayScreen() {
         >
           <View>
             <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-              {currentWeather.greeting}
+              {weather.greeting}
             </Text>
             <View
               style={{
@@ -53,7 +81,7 @@ export default function TodayScreen() {
             >
               <AppIcon name="solar-map-point-bold" size={16} color={t.primary} />
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-                {currentWeather.location}
+                {weather.location}
               </Text>
             </View>
           </View>
@@ -77,36 +105,66 @@ export default function TodayScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 }}>
-          <Image source={mascotSunny} style={{ height: 192, marginBottom: 8, width: 192 }} contentFit="contain" />
-          <View style={{ alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'center' }}>
-            <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 96, lineHeight: 100 }}>
-              {currentWeather.temperature}
-            </Text>
-            <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 36, marginTop: 16 }}>
-              °
-            </Text>
-          </View>
-          <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 24, marginTop: -12 }}>
-            {currentWeather.condition}
-          </Text>
-          <View
+        {/* Error banner */}
+        {error && (
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={clearError}
             style={{
-              backgroundColor: alpha(t.primary, 0.10),
-              borderColor: alpha(t.primary, 0.20),
-              borderRadius: r.full,
-              borderWidth: 1,
-              marginTop: 16,
-              paddingHorizontal: 20,
-              paddingVertical: 8,
+              backgroundColor: alpha(t.danger, 0.10),
+              borderRadius: r.rounded2rem,
+              marginBottom: 8,
+              marginHorizontal: 24,
+              padding: 12,
             }}
           >
-            <Text style={{ color: t.primary, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-              {currentWeather.weatherMood}
+            <Text style={{ color: t.danger, fontFamily: 'Quicksand_700Bold', fontSize: 12, textAlign: 'center' }}>
+              Couldn't refresh weather. Showing saved data. Tap to dismiss.
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Hero: mascot + temperature */}
+        {isLoading && !payload ? (
+          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+            <ActivityIndicator size="large" color={t.primary} />
+            <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 14, marginTop: 12 }}>
+              Looking at the sky…
             </Text>
           </View>
-        </View>
+        ) : (
+          <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 }}>
+            <Image source={mascotSunny} style={{ height: 192, marginBottom: 8, width: 192 }} contentFit="contain" />
+            <View style={{ alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'center' }}>
+              <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 96, lineHeight: 100 }}>
+                {weather.temperature}
+              </Text>
+              <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 36, marginTop: 16 }}>
+                °
+              </Text>
+            </View>
+            <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 24, marginTop: -12 }}>
+              {weather.condition}
+            </Text>
+            <View
+              style={{
+                backgroundColor: alpha(t.primary, 0.10),
+                borderColor: alpha(t.primary, 0.20),
+                borderRadius: r.full,
+                borderWidth: 1,
+                marginTop: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 8,
+              }}
+            >
+              <Text style={{ color: t.primary, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
+                {weather.weatherMood}
+              </Text>
+            </View>
+          </View>
+        )}
 
+        {/* Comfort Score + Essentials */}
         <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16, paddingHorizontal: 24 }}>
           <View
             style={{
@@ -136,7 +194,7 @@ export default function TodayScreen() {
               Comfort Score
             </Text>
             <Text style={{ color: t.primary, fontFamily: 'Quicksand_700Bold', fontSize: 48, lineHeight: 52 }}>
-              {currentWeather.comfortScore}
+              {weather.comfortScore}
             </Text>
             <Text
               style={{
@@ -149,7 +207,7 @@ export default function TodayScreen() {
                 textAlign: 'center',
               }}
             >
-              {currentWeather.comfortDescription}
+              {weather.comfortDescription}
             </Text>
           </View>
 
@@ -180,7 +238,7 @@ export default function TodayScreen() {
               Essentials
             </Text>
             <View style={{ gap: 10, paddingTop: 4 }}>
-              {currentWeather.essentials.map((item) => (
+              {weather.essentials.map((item) => (
                 <View key={item.label} style={{ alignItems: 'center', flexDirection: 'row', gap: 10 }}>
                   <AppIcon name={item.icon} size={18} color={themeColor(theme, item.iconColor)} />
                   <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>
@@ -192,6 +250,7 @@ export default function TodayScreen() {
           </View>
         </View>
 
+        {/* Should I? */}
         <View
           style={{
             backgroundColor: t.card,
@@ -210,7 +269,7 @@ export default function TodayScreen() {
             Should I?
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            {currentWeather.shouldICards.map((card) => (
+            {weather.shouldICards.map((card) => (
               <View
                 key={card.question}
                 style={{
@@ -252,6 +311,7 @@ export default function TodayScreen() {
           </View>
         </View>
 
+        {/* Weather Quest */}
         <LinearGradient
           colors={[alpha(t.secondary, 0.10), alpha(t.primary, 0.10)]}
           end={{ x: 1, y: 1 }}
@@ -268,10 +328,10 @@ export default function TodayScreen() {
           <View style={{ alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 18 }}>
-                {currentWeather.quest.title}
+                {weather.quest.title}
               </Text>
               <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12, marginTop: 2 }}>
-                {currentWeather.quest.quest}
+                {weather.quest.quest}
               </Text>
             </View>
             <View
@@ -304,7 +364,7 @@ export default function TodayScreen() {
                 Best Time
               </Text>
               <Text style={{ color: t.primary, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-                {currentWeather.quest.bestTime}
+                {weather.quest.bestTime}
               </Text>
             </View>
             <TouchableOpacity
@@ -328,6 +388,7 @@ export default function TodayScreen() {
           </View>
         </LinearGradient>
 
+        {/* Hourly Forecast */}
         <View style={{ paddingHorizontal: 24 }}>
           <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 18, marginBottom: 16 }}>
             Hourly Forecast
@@ -338,7 +399,7 @@ export default function TodayScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 16, paddingBottom: 8, paddingHorizontal: 24 }}
         >
-          {hourlyForecast.map((hour) => (
+          {hourly.map((hour) => (
             <View
               key={hour.time}
               style={{
@@ -365,6 +426,7 @@ export default function TodayScreen() {
             </View>
           ))}
         </ScrollView>
+
       </ScrollView>
     </SafeAreaView>
   );

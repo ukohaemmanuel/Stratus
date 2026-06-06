@@ -4,12 +4,20 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon, type IconName } from '@/components/ui/AppIcon';
+import {
+  buildForecastDays,
+  buildHourlyForecast,
+  getWeatherCodeMapping,
+} from '@/features/weather/weatherInterpreter';
+import { useWeatherStore } from '@/features/weather/weatherStore';
 import { alpha, themeColor } from '@/theme/colorUtils';
 import { sleekTokens, type ThemeColorToken, useAppTheme } from '@/theme';
 
 const mascotRainy = require('../assets/images/mascots/mascot-rainy.png');
+const mascotSunny = require('../assets/images/mascots/mascot-sunny.png');
 
-const hourlyTimeline: Array<{
+// Static fallback hourly timeline used when store has no payload
+const fallbackHourly: Array<{
   time: string;
   icon: IconName;
   iconColor: ThemeColorToken;
@@ -27,12 +35,67 @@ export default function WeatherDetailScreen() {
   const r = sleekTokens.radii;
   const t = theme.colors;
   const params = useLocalSearchParams<{ city?: string; day?: string }>();
-  const city = params.city ?? 'Newcastle';
-  const day = params.day ?? 'Friday';
+
+  const payload          = useWeatherStore(s => s.currentPayload);
+  const selectedDayIndex = useWeatherStore(s => s.selectedDayIndex);
+
+  const isToday  = selectedDayIndex === null;
+  const daySlice = !isToday && payload ? payload.daily[selectedDayIndex] : null;
+
+  // City and day label
+  const city    = payload?.city.name ?? params.city ?? 'Newcastle';
+  const dayLabel = isToday
+    ? new Date().toLocaleDateString('en-GB', { weekday: 'long' })
+    : (payload
+        ? buildForecastDays(payload.daily)[selectedDayIndex!]?.dayName ?? (params.day ?? 'Friday')
+        : (params.day ?? 'Friday'));
+
+  // Temperature
+  const highTemp = isToday
+    ? (payload?.daily[0]?.highTemp ?? 18)
+    : (daySlice?.highTemp ?? 18);
+  const lowTemp  = isToday
+    ? (payload?.daily[0]?.lowTemp ?? 14)
+    : (daySlice?.lowTemp ?? 14);
+
+  // Condition label + mood
+  const weatherCode = isToday
+    ? (payload?.current.weatherCode ?? 3)
+    : (daySlice?.weatherCode ?? 3);
+  const mapping    = getWeatherCodeMapping(weatherCode);
+  const moodLabel  = mapping.weatherMood;
+  const moodColor  = themeColor(theme, mapping.iconColor);
+
+  // Metrics
+  const rain     = isToday ? `${payload?.current.rainProbability ?? 85}%` : `${daySlice?.rainChance ?? 0}%`;
+  const wind     = isToday ? `${payload?.current.windSpeed ?? 18} mph`    : `${daySlice?.windSpeedMax ?? 0} mph`;
+  const feelsLike = `${payload?.current.feelsLike ?? 14}°`;
+  const rawUv    = isToday ? (payload?.current.uvIndex ?? 0) : (daySlice?.uvIndexMax ?? 0);
+  const uvLabel  = rawUv <= 2 ? 'Low' : rawUv <= 5 ? 'Moderate' : rawUv <= 7 ? 'High' : 'Very High';
+  const summary  = payload?.city
+    ? (isToday
+        ? `${city.toUpperCase()} · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toUpperCase()}`
+        : `${city.toUpperCase()}`)
+    : `${city.toUpperCase()} · MAY 28`;
+
+  // Hourly timeline
+  const hourlyItems = payload
+    ? buildHourlyForecast(payload.hourly).map(h => ({
+        time: h.time,
+        icon: h.icon as IconName,
+        iconColor: h.iconColor,
+        temp: h.temperature,
+        progress: Math.min(1, h.rainChance / 100),
+      }))
+    : fallbackHourly;
+
+  // Pick mascot based on condition
+  const mascot = weatherCode >= 60 ? mascotRainy : mascotSunny;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+        {/* Header */}
         <View
           style={{
             alignItems: 'center',
@@ -64,7 +127,7 @@ export default function WeatherDetailScreen() {
           </TouchableOpacity>
           <View>
             <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 24, lineHeight: 28 }}>
-              {day}
+              {dayLabel}
             </Text>
             <Text
               style={{
@@ -76,11 +139,12 @@ export default function WeatherDetailScreen() {
                 textTransform: 'uppercase',
               }}
             >
-              {city} · May 28
+              {summary}
             </Text>
           </View>
         </View>
 
+        {/* Hero card */}
         <View style={{ paddingHorizontal: 24 }}>
           <View
             style={{
@@ -99,34 +163,36 @@ export default function WeatherDetailScreen() {
             }}
           >
             <View style={{ opacity: 0.03, position: 'absolute', right: 0, top: 0, transform: [{ rotate: '12deg' }] }}>
-              <AppIcon name="solar-cloud-rain-bold" size={180} color={t.text} />
+              <AppIcon name={mapping.iconKey} size={180} color={t.text} />
             </View>
-            <Image source={mascotRainy} style={{ height: 192, marginBottom: 16, width: 192, zIndex: 1 }} contentFit="contain" />
+            <Image source={mascot} style={{ height: 192, marginBottom: 16, width: 192, zIndex: 1 }} contentFit="contain" />
             <View style={{ alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'center', zIndex: 1 }}>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 96, lineHeight: 100 }}>
-                18°
+                {highTemp}°
               </Text>
               <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 30, marginTop: 24 }}>
-                /14°
+                /{lowTemp}°
               </Text>
             </View>
-            <Text style={{ color: t.accent, fontFamily: 'Quicksand_700Bold', fontSize: 24, marginTop: 8, zIndex: 1 }}>
-              Windy boss battle
+            <Text style={{ color: moodColor, fontFamily: 'Quicksand_700Bold', fontSize: 24, marginTop: 8, zIndex: 1 }}>
+              {moodLabel}
             </Text>
           </View>
         </View>
 
+        {/* Metric grid */}
         <View style={{ gap: 16, paddingHorizontal: 24 }}>
           <View style={{ flexDirection: 'row', gap: 16 }}>
-            <MetricCard icon="solar-waterdrop-bold" iconColor={t.primary} label="Rain chance" value="85%" />
-            <MetricCard icon="solar-wind-bold" iconColor={t.secondary} label="Wind Speed" value="18 mph" />
+            <MetricCard icon="solar-waterdrop-bold" iconColor={t.primary} label="Rain chance" value={rain} />
+            <MetricCard icon="solar-wind-bold" iconColor={t.secondary} label="Wind Speed" value={wind} />
           </View>
           <View style={{ flexDirection: 'row', gap: 16 }}>
-            <MetricCard icon="solar-thermometer-bold" iconColor={t.accent} label="Feels Like" value="14°" />
-            <MetricCard icon="solar-sun-fog-bold" iconColor={t.secondary} label="UV Index" value="Low" />
+            <MetricCard icon="solar-thermometer-bold" iconColor={t.accent} label="Feels Like" value={feelsLike} />
+            <MetricCard icon="solar-sun-fog-bold" iconColor={t.secondary} label="UV Index" value={uvLabel} />
           </View>
         </View>
 
+        {/* Readiness summary */}
         <View
           style={{
             backgroundColor: alpha(t.primary, 0.05),
@@ -146,10 +212,15 @@ export default function WeatherDetailScreen() {
             Weather-ready summary
           </Text>
           <Text style={{ color: alpha(t.primary, 0.70), fontFamily: 'Quicksand_700Bold', fontSize: 16, lineHeight: 24 }}>
-            Layer up in the morning. Rain risk is low, but it gets breezy later. A wind-resistant jacket is recommended for your walk!
+            {payload?.city
+              ? (isToday
+                  ? `${mapping.conditionLabel} conditions. ${wind} winds. Feels like ${feelsLike}.`
+                  : `${mapping.conditionLabel} day. High ${highTemp}°, low ${lowTemp}°. ${rain} chance of rain.`)
+              : 'Layer up in the morning. Rain risk is low, but it gets breezy later.'}
           </Text>
         </View>
 
+        {/* Hourly timeline */}
         <View style={{ marginTop: 16, paddingHorizontal: 24 }}>
           <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 20, marginBottom: 16, paddingHorizontal: 8 }}>
             Hourly Timeline
@@ -167,9 +238,8 @@ export default function WeatherDetailScreen() {
               shadowRadius: 8,
             }}
           >
-            {hourlyTimeline.map((item) => {
+            {hourlyItems.map((item) => {
               const color = themeColor(theme, item.iconColor);
-
               return (
                 <View key={item.time} style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12, width: 54 }}>
