@@ -1,22 +1,18 @@
 import { router } from 'expo-router';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/ui/AppIcon';
+import { usePreferencesStore } from '@/features/preferences/preferencesStore';
 import { alpha } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
-
-type SectionHeaderProps = {
-  label: string;
-};
 
 function Divider({ color }: { color: string }) {
   return <View style={{ backgroundColor: color, height: 1 }} />;
 }
 
-function SectionHeader({ label }: SectionHeaderProps) {
+function SectionHeader({ label }: { label: string }) {
   const theme = useAppTheme();
-
   return (
     <Text
       style={{
@@ -39,6 +35,18 @@ export default function SettingsScreen() {
   const r = sleekTokens.radii;
   const t = theme.colors;
 
+  const temperatureUnit    = usePreferencesStore(s => s.temperatureUnit);
+  const weatherTone        = usePreferencesStore(s => s.weatherTone);
+  const hapticsEnabled     = usePreferencesStore(s => s.hapticsEnabled);
+  const useCurrentLocation = usePreferencesStore(s => s.useCurrentLocation);
+  const setTemperatureUnit    = usePreferencesStore(s => s.setTemperatureUnit);
+  const setWeatherTone        = usePreferencesStore(s => s.setWeatherTone);
+  const setHapticsEnabled     = usePreferencesStore(s => s.setHapticsEnabled);
+  const setUseCurrentLocation = usePreferencesStore(s => s.setUseCurrentLocation);
+
+  const isCelsius    = temperatureUnit === 'celsius';
+  const isPlayful    = weatherTone === 'playful';
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 128 }}>
@@ -49,6 +57,8 @@ export default function SettingsScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 24 }}>
+
+          {/* ── Preferences ───────────────────────────── */}
           <SectionHeader label="Preferences" />
           <View
             style={{
@@ -63,6 +73,7 @@ export default function SettingsScreen() {
               shadowRadius: 8,
             }}
           >
+            {/* Temperature unit */}
             <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 20 }}>
               <View style={{ alignItems: 'center', flexDirection: 'row', gap: 16 }}>
                 <View
@@ -72,9 +83,6 @@ export default function SettingsScreen() {
                     borderRadius: r.rounded2xl,
                     height: 44,
                     justifyContent: 'center',
-                    shadowColor: t.primary,
-                    shadowOpacity: 0.05,
-                    shadowRadius: 8,
                     width: 44,
                   }}
                 >
@@ -94,29 +102,44 @@ export default function SettingsScreen() {
                   padding: 6,
                 }}
               >
-                <View
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => setTemperatureUnit('celsius')}
                   style={{
-                    backgroundColor: t.card,
-                    borderColor: alpha(t.border, 0.10),
+                    backgroundColor: isCelsius ? t.card : 'transparent',
+                    borderColor: isCelsius ? alpha(t.border, 0.10) : 'transparent',
                     borderRadius: 12,
                     borderWidth: 1,
                     paddingHorizontal: 20,
                     paddingVertical: 8,
-                    shadowColor: t.primary,
-                    shadowOpacity: 0.06,
-                    shadowRadius: 8,
                   }}
                 >
-                  <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>°C</Text>
-                </View>
-                <TouchableOpacity activeOpacity={0.75} style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
-                  <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>°F</Text>
+                  <Text style={{ color: isCelsius ? t.text : t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>
+                    °C
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => setTemperatureUnit('fahrenheit')}
+                  style={{
+                    backgroundColor: !isCelsius ? t.card : 'transparent',
+                    borderColor: !isCelsius ? alpha(t.border, 0.10) : 'transparent',
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    paddingHorizontal: 20,
+                    paddingVertical: 8,
+                  }}
+                >
+                  <Text style={{ color: !isCelsius ? t.text : t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>
+                    °F
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <Divider color={t.border} />
 
+            {/* Weather tone */}
             <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 20 }}>
               <View style={{ alignItems: 'center', flexDirection: 'row', gap: 16 }}>
                 <View
@@ -126,9 +149,6 @@ export default function SettingsScreen() {
                     borderRadius: r.rounded2xl,
                     height: 44,
                     justifyContent: 'center',
-                    shadowColor: t.secondary,
-                    shadowOpacity: 0.05,
-                    shadowRadius: 8,
                     width: 44,
                   }}
                 >
@@ -138,15 +158,45 @@ export default function SettingsScreen() {
                   Weather tone
                 </Text>
               </View>
-              <View style={{ backgroundColor: alpha(t.primary, 0.10), borderRadius: r.full, paddingHorizontal: 16, paddingVertical: 6 }}>
-                <Text style={{ color: t.primary, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-                  Playful
-                </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => setWeatherTone('playful')}
+                  style={{
+                    backgroundColor: isPlayful ? alpha(t.primary, 0.10) : 'transparent',
+                    borderColor: isPlayful ? alpha(t.primary, 0.20) : t.border,
+                    borderRadius: r.full,
+                    borderWidth: 1,
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                  }}
+                >
+                  <Text style={{ color: isPlayful ? t.primary : t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 13 }}>
+                    Playful
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => setWeatherTone('simple')}
+                  style={{
+                    backgroundColor: !isPlayful ? alpha(t.primary, 0.10) : 'transparent',
+                    borderColor: !isPlayful ? alpha(t.primary, 0.20) : t.border,
+                    borderRadius: r.full,
+                    borderWidth: 1,
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                  }}
+                >
+                  <Text style={{ color: !isPlayful ? t.primary : t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 13 }}>
+                    Simple
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
             <Divider color={t.border} />
 
+            {/* Haptics */}
             <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 20 }}>
               <View style={{ alignItems: 'center', flexDirection: 'row', gap: 16 }}>
                 <View
@@ -156,24 +206,25 @@ export default function SettingsScreen() {
                     borderRadius: r.rounded2xl,
                     height: 44,
                     justifyContent: 'center',
-                    shadowColor: t.accent,
-                    shadowOpacity: 0.05,
-                    shadowRadius: 8,
                     width: 44,
                   }}
                 >
                   <AppIcon name="solar-bell-bold" size={22} color={t.accent} />
                 </View>
                 <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 16 }}>
-                  Daily reminder
+                  Haptics
                 </Text>
               </View>
-              <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-                08:30 AM
-              </Text>
+              <Switch
+                value={hapticsEnabled}
+                onValueChange={setHapticsEnabled}
+                trackColor={{ false: alpha(t.mutedText, 0.20), true: t.primary }}
+                thumbColor={t.card}
+              />
             </View>
           </View>
 
+          {/* ── Location ───────────────────────────────── */}
           <SectionHeader label="Location" />
           <View
             style={{
@@ -197,9 +248,6 @@ export default function SettingsScreen() {
                     borderRadius: r.rounded2xl,
                     height: 44,
                     justifyContent: 'center',
-                    shadowColor: t.primary,
-                    shadowOpacity: 0.05,
-                    shadowRadius: 8,
                     width: 44,
                   }}
                 >
@@ -209,29 +257,12 @@ export default function SettingsScreen() {
                   Use current location
                 </Text>
               </View>
-              <View
-                style={{
-                  backgroundColor: t.primary,
-                  borderRadius: r.full,
-                  height: 26,
-                  justifyContent: 'center',
-                  padding: 4,
-                  width: 48,
-                }}
-              >
-                <View
-                  style={{
-                    alignSelf: 'flex-end',
-                    backgroundColor: t.card,
-                    borderRadius: r.full,
-                    height: 18,
-                    shadowColor: t.primary,
-                    shadowOpacity: 0.08,
-                    shadowRadius: 8,
-                    width: 18,
-                  }}
-                />
-              </View>
+              <Switch
+                value={useCurrentLocation}
+                onValueChange={setUseCurrentLocation}
+                trackColor={{ false: alpha(t.mutedText, 0.20), true: t.primary }}
+                thumbColor={t.card}
+              />
             </View>
 
             <Divider color={t.border} />
@@ -249,9 +280,6 @@ export default function SettingsScreen() {
                     borderRadius: r.rounded2xl,
                     height: 44,
                     justifyContent: 'center',
-                    shadowColor: t.primary,
-                    shadowOpacity: 0.04,
-                    shadowRadius: 8,
                     width: 44,
                   }}
                 >
@@ -265,6 +293,7 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* ── Privacy ───────────────────────────────── */}
           <SectionHeader label="Privacy" />
           <View
             style={{

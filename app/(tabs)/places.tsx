@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useShallow } from 'zustand/react/shallow';
 
 import { AppIcon } from '@/components/ui/AppIcon';
-import { mockPlaces } from '@/data/mockPlaces';
+import { usePlacesStore } from '@/features/places/placesStore';
 import { getWeatherCodeMapping } from '@/features/weather/weatherInterpreter';
 import { useWeatherStore } from '@/features/weather/weatherStore';
 import type { CityResult } from '@/services/weather/weatherTypes';
@@ -15,34 +16,25 @@ export default function PlacesScreen() {
   const r = sleekTokens.radii;
   const t = theme.colors;
 
-  const payload            = useWeatherStore(s => s.currentPayload);
+  const payload             = useWeatherStore(s => s.currentPayload);
   const fetchWeatherForCity = useWeatherStore(s => s.fetchWeatherForCity);
-  const setSelectedDay     = useWeatherStore(s => s.setSelectedDay);
+  const setSelectedDay      = useWeatherStore(s => s.setSelectedDay);
+  const setSelectedLocation = useWeatherStore(s => s.setSelectedLocation);
 
-  const savedPlaces = mockPlaces.filter((p) => !p.isCurrent);
+  const savedPlaces = usePlacesStore(useShallow(s => s.savedPlaces));
+  const removePlace = usePlacesStore(s => s.removePlace);
 
-  // Current location card: use live payload if available, fallback to mock
-  const mockCurrent = mockPlaces.find((p) => p.isCurrent) ?? mockPlaces[0];
-  const currentName   = payload?.city.name ?? mockCurrent.city;
-  const currentTemp   = payload?.current.temperature ?? mockCurrent.temperature;
-  const currentRain   = payload?.current.rainProbability ?? mockCurrent.rainChance;
-  const currentCode   = payload?.current.weatherCode ?? 3;
+  // Current location card: live data from store
+  const currentCode    = payload?.current.weatherCode ?? 3;
   const currentMapping = getWeatherCodeMapping(currentCode);
-  const currentMood   = payload
-    ? currentMapping.weatherMood
-    : mockCurrent.weatherMood;
+  const currentName    = payload?.city.name ?? 'Your Location';
+  const currentTemp    = payload?.current.temperature ?? '--';
+  const currentRain    = payload?.current.rainProbability ?? 0;
+  const currentMood    = payload ? currentMapping.weatherMood : 'Tap to load weather';
 
-  const handleSavedPlaceTap = async (place: typeof mockPlaces[0]) => {
-    const city: CityResult = {
-      id: place.id,
-      name: place.city,
-      country: place.region,
-      region: place.region,
-      latitude: place.latitude,
-      longitude: place.longitude,
-      timezone: 'auto',
-    };
+  const handleSavedPlaceTap = async (city: CityResult) => {
     setSelectedDay(null);
+    setSelectedLocation(city);
     await fetchWeatherForCity(city);
     router.push('/weather-detail');
   };
@@ -136,9 +128,9 @@ export default function PlacesScreen() {
                 </Text>
               </View>
               <AppIcon
-                name={payload ? currentMapping.iconKey : mockCurrent.icon}
+                name={currentMapping.iconKey}
                 size={40}
-                color={payload ? themeColor(theme, currentMapping.iconColor) : themeColor(theme, mockCurrent.iconColor)}
+                color={themeColor(theme, currentMapping.iconColor)}
               />
             </View>
           </View>
@@ -168,36 +160,49 @@ export default function PlacesScreen() {
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 20 }}>
-                      {place.city}
+                      {place.name}
                     </Text>
-                    <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 10, marginTop: 2 }}>
-                      {place.region}
-                    </Text>
-                    <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12, marginTop: 8 }}>
-                      {place.weatherMood}
+                    <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12, marginTop: 2 }}>
+                      {place.region ? `${place.region}, ` : ''}{place.country}
                     </Text>
                   </View>
-                  <View style={{ alignItems: 'center', flexDirection: 'row', gap: 16 }}>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 24 }}>
-                        {place.temperature}°
-                      </Text>
-                      <Text
-                        style={{
-                          color: t.mutedText,
-                          fontFamily: 'Quicksand_700Bold',
-                          fontSize: 10,
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {place.rainChance}% rain
-                      </Text>
-                    </View>
-                    <AppIcon name={place.icon} size={36} color={themeColor(theme, place.iconColor)} />
-                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    onPress={() => removePlace(place.id)}
+                    style={{
+                      alignItems: 'center',
+                      backgroundColor: alpha(t.danger, 0.08),
+                      borderRadius: r.full,
+                      height: 36,
+                      justifyContent: 'center',
+                      marginLeft: 12,
+                      width: 36,
+                    }}
+                  >
+                    <AppIcon name="solar-trash-bin-trash-bold" size={18} color={t.danger} />
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             ))}
+
+            {savedPlaces.length === 0 && (
+              <View
+                style={{
+                  alignItems: 'center',
+                  backgroundColor: t.card,
+                  borderColor: alpha(t.mutedText, 0.15),
+                  borderRadius: r.rounded2_5rem,
+                  borderWidth: 1,
+                  paddingVertical: 32,
+                }}
+              >
+                <AppIcon name="solar-map-point-wave-bold" size={32} color={alpha(t.mutedText, 0.30)} />
+                <Text style={{ color: alpha(t.mutedText, 0.50), fontFamily: 'Quicksand_700Bold', fontSize: 14, marginTop: 8 }}>
+                  No saved places yet
+                </Text>
+              </View>
+            )}
 
             <TouchableOpacity
               activeOpacity={0.75}

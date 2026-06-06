@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/ui/AppIcon';
@@ -11,8 +10,12 @@ import {
   buildHourlyForecast,
 } from '@/features/weather/weatherInterpreter';
 import { useWeatherStore } from '@/features/weather/weatherStore';
+import { usePreferencesStore } from '@/features/preferences/preferencesStore';
+import { STALE_MESSAGE, isWeatherCacheStale } from '@/features/weather/weatherCache';
 import { alpha, themeColor } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
+import { formatTemperature } from '@/utils/temperature';
+import { useEffect, useState } from 'react';
 
 const mascotSunny = require('../../assets/images/mascots/mascot-sunny.png');
 const mascotQuest = require('../../assets/images/mascots/mascot-quest.png');
@@ -22,29 +25,50 @@ export default function TodayScreen() {
   const r = sleekTokens.radii;
   const t = theme.colors;
 
-  const payload   = useWeatherStore(s => s.currentPayload);
-  const isLoading = useWeatherStore(s => s.isLoadingCurrent);
-  const error     = useWeatherStore(s => s.error);
+  const payload             = useWeatherStore(s => s.currentPayload);
+  const isLoading           = useWeatherStore(s => s.isLoadingCurrent);
+  const error               = useWeatherStore(s => s.error);
+  const selectedLocation    = useWeatherStore(s => s.selectedLocation);
+  const fetchWeatherForCity = useWeatherStore(s => s.fetchWeatherForCity);
   const fetchWeatherForCurrentLocation = useWeatherStore(s => s.fetchWeatherForCurrentLocation);
-  const clearError = useWeatherStore(s => s.clearError);
+  const clearError          = useWeatherStore(s => s.clearError);
+
+  const unit = usePreferencesStore(s => s.temperatureUnit);
+
+  const [isStale, setIsStale] = useState(false);
+
+  // Check if cache is stale
+  useEffect(() => {
+    if (!selectedLocation) return;
+    isWeatherCacheStale(selectedLocation.id).then(setIsStale);
+  }, [selectedLocation, payload]);
+
+  const handleRefresh = () => {
+    if (selectedLocation) {
+      fetchWeatherForCity(selectedLocation);
+    } else {
+      fetchWeatherForCurrentLocation();
+    }
+  };
 
   // Derived display data — falls back to mock if no payload yet
   const weather = payload ? buildCurrentWeatherDisplay(payload) : currentWeather;
   const hourly  = payload ? buildHourlyForecast(payload.hourly) : hourlyForecast;
 
-  // Fetch on first mount; guard prevents React 19 Strict Mode double-fire
-  const hasFetched = useRef(false);
-  useEffect(() => {
-    if (!payload && !hasFetched.current) {
-      hasFetched.current = true;
-      fetchWeatherForCurrentLocation();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 128 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 128 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading && !!payload}
+            onRefresh={handleRefresh}
+            tintColor={t.primary}
+            colors={[t.primary]}
+          />
+        }
+      >
 
         {/* Header */}
         <View
@@ -124,6 +148,23 @@ export default function TodayScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Stale cache banner */}
+        {!error && isStale && payload && (
+          <View
+            style={{
+              backgroundColor: alpha(t.secondary, 0.10),
+              borderRadius: r.rounded2rem,
+              marginBottom: 8,
+              marginHorizontal: 24,
+              padding: 10,
+            }}
+          >
+            <Text style={{ color: t.secondary, fontFamily: 'Quicksand_700Bold', fontSize: 11, textAlign: 'center' }}>
+              {STALE_MESSAGE}
+            </Text>
+          </View>
+        )}
+
         {/* Hero: mascot + temperature */}
         {isLoading && !payload ? (
           <View style={{ alignItems: 'center', paddingVertical: 48 }}>
@@ -137,7 +178,9 @@ export default function TodayScreen() {
             <Image source={mascotSunny} style={{ height: 192, marginBottom: 8, width: 192 }} contentFit="contain" />
             <View style={{ alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'center' }}>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 96, lineHeight: 100 }}>
-                {weather.temperature}
+                {unit === 'fahrenheit'
+                  ? formatTemperature(typeof weather.temperature === 'number' ? weather.temperature : parseInt(String(weather.temperature), 10), unit).replace('°', '')
+                  : weather.temperature}
               </Text>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 36, marginTop: 16 }}>
                 °
@@ -421,7 +464,7 @@ export default function TodayScreen() {
               </Text>
               <AppIcon name={hour.icon} size={32} color={themeColor(theme, hour.iconColor)} />
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 20 }}>
-                {hour.temperature}°
+                {formatTemperature(hour.temperature, unit)}
               </Text>
             </View>
           ))}

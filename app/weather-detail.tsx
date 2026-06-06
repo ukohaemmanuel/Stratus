@@ -10,8 +10,10 @@ import {
   getWeatherCodeMapping,
 } from '@/features/weather/weatherInterpreter';
 import { useWeatherStore } from '@/features/weather/weatherStore';
+import { usePreferencesStore } from '@/features/preferences/preferencesStore';
 import { alpha, themeColor } from '@/theme/colorUtils';
 import { sleekTokens, type ThemeColorToken, useAppTheme } from '@/theme';
+import { formatTemperature } from '@/utils/temperature';
 
 const mascotRainy = require('../assets/images/mascots/mascot-rainy.png');
 const mascotSunny = require('../assets/images/mascots/mascot-sunny.png');
@@ -38,6 +40,7 @@ export default function WeatherDetailScreen() {
 
   const payload          = useWeatherStore(s => s.currentPayload);
   const selectedDayIndex = useWeatherStore(s => s.selectedDayIndex);
+  const unit             = usePreferencesStore(s => s.temperatureUnit);
 
   const isToday  = selectedDayIndex === null;
   const daySlice = !isToday && payload ? payload.daily[selectedDayIndex] : null;
@@ -69,7 +72,7 @@ export default function WeatherDetailScreen() {
   // Metrics
   const rain     = isToday ? `${payload?.current.rainProbability ?? 85}%` : `${daySlice?.rainChance ?? 0}%`;
   const wind     = isToday ? `${payload?.current.windSpeed ?? 18} mph`    : `${daySlice?.windSpeedMax ?? 0} mph`;
-  const feelsLike = `${payload?.current.feelsLike ?? 14}°`;
+  const feelsLike = formatTemperature(payload?.current.feelsLike ?? 14, unit);
   const rawUv    = isToday ? (payload?.current.uvIndex ?? 0) : (daySlice?.uvIndexMax ?? 0);
   const uvLabel  = rawUv <= 2 ? 'Low' : rawUv <= 5 ? 'Moderate' : rawUv <= 7 ? 'High' : 'Very High';
   const summary  = payload?.city
@@ -168,10 +171,10 @@ export default function WeatherDetailScreen() {
             <Image source={mascot} style={{ height: 192, marginBottom: 16, width: 192, zIndex: 1 }} contentFit="contain" />
             <View style={{ alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'center', zIndex: 1 }}>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 96, lineHeight: 100 }}>
-                {highTemp}°
+                {formatTemperature(highTemp, unit)}
               </Text>
               <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 30, marginTop: 24 }}>
-                /{lowTemp}°
+                /{formatTemperature(lowTemp, unit)}
               </Text>
             </View>
             <Text style={{ color: moodColor, fontFamily: 'Quicksand_700Bold', fontSize: 24, marginTop: 8, zIndex: 1 }}>
@@ -215,7 +218,7 @@ export default function WeatherDetailScreen() {
             {payload?.city
               ? (isToday
                   ? `${mapping.conditionLabel} conditions. ${wind} winds. Feels like ${feelsLike}.`
-                  : `${mapping.conditionLabel} day. High ${highTemp}°, low ${lowTemp}°. ${rain} chance of rain.`)
+                  : `${mapping.conditionLabel} day. High ${formatTemperature(highTemp, unit)}, low ${formatTemperature(lowTemp, unit)}. ${rain} chance of rain.`)
               : 'Layer up in the morning. Rain risk is low, but it gets breezy later.'}
           </Text>
         </View>
@@ -269,7 +272,7 @@ export default function WeatherDetailScreen() {
                     />
                   </View>
                   <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 16 }}>
-                    {item.temp}°
+                    {formatTemperature(item.temp, unit)}
                   </Text>
                 </View>
               );

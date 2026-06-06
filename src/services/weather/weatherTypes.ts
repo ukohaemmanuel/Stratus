@@ -32,21 +32,21 @@ export const RawForecastResponseSchema = z.object({
   }),
   hourly: z.object({
     time: z.array(z.string()),
-    temperature_2m: z.array(z.number()),
-    weathercode: z.array(z.number()),
+    temperature_2m: z.array(z.number().nullable()).transform(arr => arr.map(v => v ?? 0)),
+    weathercode: z.array(z.number().nullable()).transform(arr => arr.map(v => v ?? 3)),
     precipitation_probability: z.array(z.number().nullable()).transform(arr =>
       arr.map(v => v ?? 0)
     ),
-    apparent_temperature: z.array(z.number()),
+    apparent_temperature: z.array(z.number().nullable()).transform(arr => arr.map(v => v ?? 0)),
     uv_index: z.array(z.number().nullable()).transform(arr =>
       arr.map(v => v ?? 0)
     ),
   }),
   daily: z.object({
     time: z.array(z.string()),
-    weathercode: z.array(z.number()),
-    temperature_2m_max: z.array(z.number()),
-    temperature_2m_min: z.array(z.number()),
+    weathercode: z.array(z.number().nullable()).transform(arr => arr.map(v => v ?? 3)),
+    temperature_2m_max: z.array(z.number().nullable()).transform(arr => arr.map(v => v ?? 0)),
+    temperature_2m_min: z.array(z.number().nullable()).transform(arr => arr.map(v => v ?? 0)),
     precipitation_probability_max: z.array(z.number().nullable()).transform(arr =>
       arr.map(v => v ?? 0)
     ),

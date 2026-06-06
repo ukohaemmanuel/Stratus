@@ -6,8 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { getWeatherCodeMapping } from '@/features/weather/weatherInterpreter';
 import { useWeatherStore } from '@/features/weather/weatherStore';
+import { usePreferencesStore } from '@/features/preferences/preferencesStore';
 import { alpha } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
+import { formatTemperature } from '@/utils/temperature';
 
 const globeImage = require('../../assets/images/mascots/globe.png');
 
@@ -19,6 +21,7 @@ export default function GlobeScreen() {
   const payload = useWeatherStore(s => s.currentPayload);
   const fetchWeatherForCurrentLocation = useWeatherStore(s => s.fetchWeatherForCurrentLocation);
   const setSelectedDay = useWeatherStore(s => s.setSelectedDay);
+  const unit    = usePreferencesStore(s => s.temperatureUnit);
 
   const city    = payload?.city.name ?? 'Newcastle';
   const temp    = payload?.current.temperature ?? 12;
@@ -135,7 +138,7 @@ export default function GlobeScreen() {
                   {city}
                 </Text>
                 <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 10 }}>
-                  {temp}° · {mapping.conditionLabel}
+                  {formatTemperature(temp, unit)} · {mapping.conditionLabel}
                 </Text>
               </View>
               <AppIcon name={mapping.iconKey} size={20} color={t.primary} />
@@ -240,7 +243,7 @@ export default function GlobeScreen() {
             </View>
             <View style={{ alignItems: 'flex-end', gap: 12 }}>
               <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 36 }}>
-                {temp}°
+                {formatTemperature(temp, unit)}
               </Text>
               <TouchableOpacity
                 activeOpacity={0.75}

@@ -59,7 +59,8 @@ export async function getWeatherForCoordinates(
   // Open-Meteo hourly times are local — no timezone suffix — so we use the
   // current device hour as a proxy rather than parsing as Date (UTC risk).
   const deviceHour = new Date().getHours();
-  const todayPrefix = new Date().toISOString().slice(0, 10); // "2024-06-06"
+  const now = new Date();
+  const todayPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   let currentHourIndex = raw.hourly.time.findIndex(t => {
     const dateMatch = t.startsWith(todayPrefix);
     const hourMatch = extractHour(t) === deviceHour;

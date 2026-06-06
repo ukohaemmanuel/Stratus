@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { AppIcon } from '@/components/ui/AppIcon';
+import { usePlacesStore } from '@/features/places/placesStore';
 import { useWeatherStore } from '@/features/weather/weatherStore';
 import type { CityResult } from '@/services/weather/weatherTypes';
 import { alpha } from '@/theme/colorUtils';
@@ -23,13 +24,17 @@ export default function SearchCityScreen() {
   const r = sleekTokens.radii;
   const t = theme.colors;
 
-  const storeResults    = useWeatherStore(useShallow(s => s.searchResults));
-  const recentSearches  = useWeatherStore(useShallow(s => s.recentSearches));
-  const isLoadingSearch = useWeatherStore(s => s.isLoadingSearch);
-  const searchCity      = useWeatherStore(s => s.searchCity);
-  const fetchWeatherForCity = useWeatherStore(s => s.fetchWeatherForCity);
-  const addRecentSearch = useWeatherStore(s => s.addRecentSearch);
-  const clearSearch     = useWeatherStore(s => s.clearSearch);
+  const storeResults       = useWeatherStore(useShallow(s => s.searchResults));
+  const recentSearches     = useWeatherStore(useShallow(s => s.recentSearches));
+  const isLoadingSearch    = useWeatherStore(s => s.isLoadingSearch);
+  const searchCity         = useWeatherStore(s => s.searchCity);
+  const fetchWeatherForCity= useWeatherStore(s => s.fetchWeatherForCity);
+  const addRecentSearch    = useWeatherStore(s => s.addRecentSearch);
+  const setSelectedLocation= useWeatherStore(s => s.setSelectedLocation);
+  const clearSearch        = useWeatherStore(s => s.clearSearch);
+
+  const addPlace = usePlacesStore(s => s.addPlace);
+  const isSaved  = usePlacesStore(s => s.isSaved);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -49,8 +54,10 @@ export default function SearchCityScreen() {
 
   const handleAddCity = async (result: CityResult) => {
     addRecentSearch(result.name);
+    addPlace(result);
+    setSelectedLocation(result);
     await fetchWeatherForCity(result);
-    router.back();
+    router.push('/(tabs)/today');
   };
 
   const showResults = query.trim().length >= 2;
@@ -62,7 +69,7 @@ export default function SearchCityScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 48 }}
       >
-        {/* Header: back + search input */}
+        {/* Header */}
         <View
           style={{
             alignItems: 'center',
@@ -119,7 +126,7 @@ export default function SearchCityScreen() {
           </View>
         </View>
 
-        {/* Recent searches — shown when query is short */}
+        {/* Recent searches */}
         {!showResults && (
           <View style={{ paddingHorizontal: 24 }}>
             <Text
@@ -188,11 +195,7 @@ export default function SearchCityScreen() {
             </Text>
 
             {isLoadingSearch && (
-              <ActivityIndicator
-                size="small"
-                color={t.primary}
-                style={{ marginVertical: 16 }}
-              />
+              <ActivityIndicator size="small" color={t.primary} style={{ marginVertical: 16 }} />
             )}
 
             {!isLoadingSearch && storeResults.length === 0 && (
@@ -202,50 +205,57 @@ export default function SearchCityScreen() {
             )}
 
             <View style={{ gap: 12 }}>
-              {storeResults.map((result) => (
-                <View
-                  key={result.id}
-                  style={{
-                    alignItems: 'center',
-                    backgroundColor: t.card,
-                    borderColor: t.border,
-                    borderRadius: r.rounded2rem,
-                    borderWidth: 1,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    padding: 20,
-                    shadowColor: t.primary,
-                    shadowOpacity: 0.06,
-                    shadowRadius: 8,
-                  }}
-                >
-                  <View>
-                    <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 18 }}>
-                      {result.name}
-                    </Text>
-                    <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12, marginTop: 2 }}>
-                      {result.region ? `${result.region}, ` : ''}{result.country}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={() => handleAddCity(result)}
+              {storeResults.map((result) => {
+                const saved = isSaved(result.id);
+                return (
+                  <View
+                    key={result.id}
                     style={{
                       alignItems: 'center',
-                      backgroundColor: t.primary,
-                      borderRadius: r.full,
-                      height: 40,
-                      justifyContent: 'center',
+                      backgroundColor: t.card,
+                      borderColor: t.border,
+                      borderRadius: r.rounded2rem,
+                      borderWidth: 1,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      padding: 20,
                       shadowColor: t.primary,
-                      shadowOpacity: 0.20,
-                      shadowRadius: 12,
-                      width: 40,
+                      shadowOpacity: 0.06,
+                      shadowRadius: 8,
                     }}
                   >
-                    <AppIcon name="material-symbols-add-rounded" size={20} color={t.primaryForeground} />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 18 }}>
+                        {result.name}
+                      </Text>
+                      <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12, marginTop: 2 }}>
+                        {result.region ? `${result.region}, ` : ''}{result.country}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={() => handleAddCity(result)}
+                      style={{
+                        alignItems: 'center',
+                        backgroundColor: saved ? alpha(t.primary, 0.12) : t.primary,
+                        borderRadius: r.full,
+                        height: 40,
+                        justifyContent: 'center',
+                        shadowColor: t.primary,
+                        shadowOpacity: saved ? 0 : 0.20,
+                        shadowRadius: 12,
+                        width: 40,
+                      }}
+                    >
+                      {saved ? (
+                        <AppIcon name="solar-check-circle-bold" size={20} color={t.primary} />
+                      ) : (
+                        <AppIcon name="material-symbols-add-rounded" size={20} color={t.primaryForeground} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
             </View>
           </View>
         )}

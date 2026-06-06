@@ -9,8 +9,10 @@ import {
   buildOutlookDays,
 } from '@/features/weather/weatherInterpreter';
 import { useWeatherStore } from '@/features/weather/weatherStore';
+import { usePreferencesStore } from '@/features/preferences/preferencesStore';
 import { alpha, themeColor } from '@/theme/colorUtils';
 import { sleekTokens, useAppTheme } from '@/theme';
+import { formatTemperature } from '@/utils/temperature';
 
 export default function ForecastScreen() {
   const theme = useAppTheme();
@@ -25,6 +27,7 @@ export default function ForecastScreen() {
 
   const payload      = useWeatherStore(s => s.currentPayload);
   const setSelectedDay = useWeatherStore(s => s.setSelectedDay);
+  const unit         = usePreferencesStore(s => s.temperatureUnit);
 
   const forecast = payload ? buildForecastDays(payload.daily) : sevenDayForecast;
   const outlook  = payload ? buildOutlookDays(payload.outlook) : sixteenDayOutlook;
@@ -103,10 +106,10 @@ export default function ForecastScreen() {
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 24 }}>
-                        {day.highTemp}°
+                        {formatTemperature(day.highTemp, unit)}
                       </Text>
                       <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 14 }}>
-                        {day.lowTemp}°
+                        {formatTemperature(day.lowTemp, unit)}
                       </Text>
                     </View>
                   </View>
@@ -155,10 +158,10 @@ export default function ForecastScreen() {
                 <AppIcon name={day.icon} size={24} color={themeColor(theme, day.iconColor)} />
                 <View style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
                   <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 18 }}>
-                    {day.highTemp}°
+                    {formatTemperature(day.highTemp, unit)}
                   </Text>
                   <Text style={{ color: t.mutedText, fontFamily: 'Quicksand_700Bold', fontSize: 12 }}>
-                    {day.lowTemp}°
+                    {formatTemperature(day.lowTemp, unit)}
                   </Text>
                 </View>
               </View>
