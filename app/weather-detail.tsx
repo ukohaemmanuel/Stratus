@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScreenBackground } from '@/components/ui/ScreenBackground';
 
 import { AppIcon, type IconName } from '@/components/ui/AppIcon';
 import {
@@ -96,7 +97,7 @@ export default function WeatherDetailScreen() {
   const mascot = weatherCode >= 60 ? mascotRainy : mascotSunny;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
+    <ScreenBackground edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
         {/* Header */}
         <View
@@ -280,7 +281,7 @@ export default function WeatherDetailScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }
 

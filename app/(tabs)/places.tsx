@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { useShallow } from 'zustand/react/shallow';
 
 import { AppIcon } from '@/components/ui/AppIcon';
@@ -40,7 +41,7 @@ export default function PlacesScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
+    <ScreenBackground edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 128 }}>
         <View style={{ paddingBottom: 24, paddingHorizontal: 24, paddingTop: 12 }}>
           <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 30 }}>
@@ -228,6 +229,6 @@ export default function PlacesScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }

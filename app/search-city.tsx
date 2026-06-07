@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { useShallow } from 'zustand/react/shallow';
 
 import { AppIcon } from '@/components/ui/AppIcon';
@@ -63,7 +63,7 @@ export default function SearchCityScreen() {
   const showResults = query.trim().length >= 2;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
+    <ScreenBackground edges={['top']}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -260,6 +260,6 @@ export default function SearchCityScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }

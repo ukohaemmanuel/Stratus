@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScreenBackground } from '@/components/ui/ScreenBackground';
 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { getWeatherCodeMapping } from '@/features/weather/weatherInterpreter';
@@ -32,7 +33,7 @@ export default function GlobeScreen() {
   const mood    = payload ? mapping.weatherMood : 'Soft cloudy morning';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
+    <ScreenBackground edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 128 }}>
         <View style={{ paddingBottom: 16, paddingHorizontal: 24, paddingTop: 12, zIndex: 2 }}>
           <Text style={{ color: t.text, fontFamily: 'Quicksand_700Bold', fontSize: 30 }}>
@@ -269,6 +270,6 @@ export default function GlobeScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }

@@ -1,6 +1,6 @@
 # Stratus — Implementation Status
 
-Last updated: 2026-06-06 (Stage 5)
+Last updated: 2026-06-07 (Stage 6)
 Project: Expo SDK 55 weather app (React Native, Expo Router, TypeScript)
 Repo: https://github.com/ukohaemmanuel/Stratus
 
@@ -134,11 +134,51 @@ Goal: make the app local-first. All key state survives a full app restart. No ba
 
 ---
 
+---
+
+### Stage 6 — App Appearance and Personalisation (COMPLETE)
+
+Goal: allow users to personalise Stratus with theme packs, accent colours, background modes (theme / weather / time / custom image), overlay strength, and a blur toggle. All persisted locally.
+
+#### New files
+
+| File | Purpose |
+|---|---|
+| `src/features/appearance/appearanceTypes.ts` | `AccentColourId` type, `AccentPreset`, `ACCENT_PRESETS` (6 colour presets), `BackgroundResult` union type |
+| `src/features/appearance/appearanceUtils.ts` | `getResolvedAccentHex(id)`, `applyAccentOverride(theme, id)` — patches primary, ring, button primary; short-circuits when accent matches theme primary |
+| `src/features/appearance/backgroundResolver.ts` | `getTimeOfDay(date)`, `getWeatherBackground(code, theme)`, `getTimeBackground(date, theme)`, `resolveAppBackground({theme, mode, code, uri})`. Dark themes (night-cloud, race-day) always use `theme.gradients.screen` |
+| `src/features/appearance/customBackground.ts` | `pickCustomBackgroundImage()` (expo-image-picker), `copyBackgroundToAppStorage(uri)` (expo-file-system copy to documentDirectory), `deleteCustomBackground(uri)` |
+| `src/components/ui/ScreenBackground.tsx` | Wrapper replacing `<SafeAreaView>` in tab screens. Reads store + weather code, delegates to `resolveAppBackground`, renders ImageBackground / LinearGradient / plain SafeAreaView accordingly |
+
+#### Updated files
+
+| File | Change |
+|---|---|
+| `src/features/appearance/appearanceStore.ts` | Added `accentColourId: AccentColourId` (default 'sky'), `blurEnabled: boolean` (default false), `setAccentColour`, `setBlurEnabled` actions; `partialize` and `resetAppearance` updated |
+| `src/theme/ThemeProvider.tsx` | Now reads `accentColourId` from appearanceStore and calls `applyAccentOverride(baseTheme, accentColourId)` before providing theme to context |
+| `app/(tabs)/today.tsx` | Replaced `<SafeAreaView>` with `<ScreenBackground>` |
+| `app/(tabs)/forecast.tsx` | Replaced `<SafeAreaView>` with `<ScreenBackground>` |
+| `app/(tabs)/globe.tsx` | Replaced `<SafeAreaView>` with `<ScreenBackground>` |
+| `app/(tabs)/places.tsx` | Replaced `<SafeAreaView>` with `<ScreenBackground>` |
+| `app/weather-detail.tsx` | Replaced `<SafeAreaView>` with `<ScreenBackground>` |
+| `app/search-city.tsx` | Replaced `<SafeAreaView>` with `<ScreenBackground>` |
+| `app/(tabs)/settings.tsx` | Replaced `<SafeAreaView>` with `<ScreenBackground>`; added App Appearance section: Theme Pack (3-button row), Accent Colour (6-dot grid), Background mode (4-pill selector), Custom image pick/remove/error, Overlay dim +/− control, Blur toggle, Reset Appearance (with Alert confirmation) |
+
+#### Architecture notes
+
+- **Accent override**: `ThemeProvider` applies `applyAccentOverride` before providing theme to context — all consumers see the patched primary automatically; short-circuit keeps it referentially stable when no change needed
+- **Background resolution**: `ScreenBackground` reads backgroundMode + customBackgroundUri from appearanceStore and weatherCode from weatherStore; delegates to pure `resolveAppBackground`; dark themes always keep their screen gradient (no light weather gradients overriding dark aesthetics)
+- **Custom image persistence**: picker URI is copied to `documentDirectory` (survives app restarts); the copied path is stored in appearanceStore; deleteCustomBackground uses idempotent delete
+- **Blur toggle**: stored and toggled in UI; actual blur rendering deferred (expo-glass-effect integration is complex; marked optional in spec)
+
+---
+
 ## What Is NOT Implemented (Future Stages)
 
 - Push notifications — no expo-notifications wiring
 - Auth / profile / payments / subscriptions — none, not planned
 - Functional 3D globe — globe screen has a decorative image only, no WebGL or interactive rotation
+- Blur background rendering — toggle exists in store + UI but visual blur not yet applied
 
 ---
 

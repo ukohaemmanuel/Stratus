@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScreenBackground } from '@/components/ui/ScreenBackground';
 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { currentWeather, hourlyForecast } from '@/data/mockWeather';
@@ -56,7 +57,7 @@ export default function TodayScreen() {
   const hourly  = payload ? buildHourlyForecast(payload.hourly) : hourlyForecast;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.background }} edges={['top']}>
+    <ScreenBackground edges={['top']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 128 }}
@@ -471,6 +472,6 @@ export default function TodayScreen() {
         </ScrollView>
 
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }
